@@ -1,6 +1,6 @@
 import { Request, response, Response, Router } from "express";
 import { contentSchema, signupSchema } from "./zod";
-import { ContentModel, TagModel, UserModel } from "./db";
+import { ContentModel, LinkModel, TagModel, UserModel } from "./db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { AuthenticatedRequest, UserAuth } from "./middlewares";
@@ -149,17 +149,52 @@ router.delete("/content/:contentId", UserAuth, async (req: AuthenticatedRequest,
         res.status(500).json({ message: "Server error", error: err });
     }
 });
-router.post("/brain/share", async (req: Request, res: Response): Promise<any> => {
-    const {share} = req.body();
-    if(share){
-        res.status(200).json({
-            link:""
-        })
-    }
-})
-router.get("/brain/:sharelink", async (req: Request, res: Response): Promise<any> => {
+router.post("/brain/share/:contentId", UserAuth, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { share } = req.body;
+    const { contentId } = req.params;
 
-})
+    const content = await ContentModel.findById(contentId);
+
+    if (!content) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+
+    // Ensure the content belongs to the logged-in user
+    // if (content.userId.toString() !== (req as any).user._id.toString()) {
+    //   return res.status(403).json({ message: "Unauthorized" });
+    // }
+
+    content.share = share;
+    await content.save();
+
+    if (share) {
+      const link = `http://localhost:3000/app/v1/brain/${content._id}`;
+      return res.status(200).json({ link });
+    } else {
+      return res.status(200).json({ message: "Sharing disabled" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err });
+  }
+});
+router.get("/brain/:contentId", async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { contentId } = req.params;
+
+    const content = await ContentModel.findById(contentId)
+      .populate("tags", "_id name") 
+      .populate("userId", "_id name"); 
+
+    if (!content || !content.share) {
+      return res.status(404).json({ message: "Invalid or expired share link" });
+    }
+
+    res.status(200).json({ content });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err });
+  }
+});
 
 
 export default router;

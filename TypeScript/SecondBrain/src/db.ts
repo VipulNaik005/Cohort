@@ -1,4 +1,5 @@
 import mongoose, { Document, ObjectId, Schema, model } from "mongoose";
+import { boolean } from "zod";
 
 const ObjectId = Schema.ObjectId;
 
@@ -29,7 +30,8 @@ export interface IUser extends Document {
 export interface IContent extends Document {
   link: string;
   type: LinkType;
-  title:String;
+  title:string;
+  share: boolean;
   tags:ObjectId[];
   userId:ObjectId;
 }
@@ -59,6 +61,7 @@ const ContentSchema: Schema<IContent> = new Schema({
     enum: Object.values(LinkType), // Enforce enum values
     required: true
   },
+  share: {type: Boolean, default:false},
   title:String,
   tags:[{
     type:ObjectId,
@@ -77,7 +80,7 @@ const TagSchema: Schema<ITags> = new Schema({
 
 //Link Schema
 const LinkSchema: Schema<ILink> = new Schema({
-    hash:String,
+    hash:{type: String, required:true},
     userId:{
         type:ObjectId,
         ref:"User"
